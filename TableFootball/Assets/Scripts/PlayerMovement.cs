@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -8,6 +9,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private Transform ball = null;
     [SerializeField] private List<Transform> doubleMovesOnEdge = new List<Transform>();
     [SerializeField] private GameObject playerRedPrefab = null;
+    [SerializeField] private Text winerText = null;
 
     private LineRenderer redLineRenderer;
     private int redLineNumber;
@@ -53,7 +55,12 @@ public class PlayerMovement : MonoBehaviour
         }
 
         if (ball.position == new Vector3(0, 6, 0))
+        {
             MovementController.weHaveWiner = true;
+            winerText.gameObject.SetActive(true);
+            winerText.color = Color.red;
+            winerText.text = winerText.text + " RED";
+        }
     }
 
     private void NumbersOfMoves()

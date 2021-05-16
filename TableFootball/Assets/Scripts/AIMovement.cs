@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class AIMovement : MonoBehaviour
 {
@@ -8,6 +9,7 @@ public class AIMovement : MonoBehaviour
     [SerializeField] private Transform ball = null;
     [SerializeField] private List<Transform> doubleMovesOnEdge = new List<Transform>();
     [SerializeField] private GameObject AIBluePrefab = null;
+    [SerializeField] private Text winerText = null;
 
     private LineRenderer blueLineRenderer;
     private int blueLineNumber;
@@ -34,7 +36,12 @@ public class AIMovement : MonoBehaviour
         }
 
         if (ball.position == new Vector3(0, -6, 0))
+        {
             MovementController.weHaveWiner = true;
+            winerText.gameObject.SetActive(true);
+            winerText.color = Color.blue;
+            winerText.text = winerText.text + " BLUE";
+        }
     }
 
     private void CreatingBlueLineRenderer()
@@ -50,7 +57,7 @@ public class AIMovement : MonoBehaviour
         RemoveForbiddenPositions(listOfPossibleMoves); // ETAP 2
         RemoveEdgePositions(); // ETAP 3
         RemovePositionFartherFromGoal(); // ETAP 4
-        CheckNextPossibleMoves(); // ETAP 5
+        //CheckNextPossibleMoves(); // ETAP 5
         blueLineRenderer.SetPosition(0, Ball.ballPositions[Ball.ballPositions.Count - 1]);
         blueLineRenderer.SetPosition(1, SelectedPosition());
         ApprovePosition();
@@ -231,7 +238,7 @@ public class AIMovement : MonoBehaviour
                 nextOfPossibleMoves.RemoveAt(b);
             }
         }
-        
+
         /*
         foreach (List<Vector3> item in nextOfPossibleMoves.ToArray())
         {
@@ -241,8 +248,13 @@ public class AIMovement : MonoBehaviour
                 listOfPossibleMoves.Remove(item.FindLastIndex(item.Count == 0));
             }
         }
-        */
+        
         Debug.Log("Etap 5: " + listOfPossibleMoves.Count);
+        for (int i = 0; i < listOfPossibleMoves.Count; i++)
+        {
+            Debug.Log(i + " - " + listOfPossibleMoves[i]);
+        }
+        */
     }
 
     private void RemovePositionFartherFromGoal()
@@ -251,7 +263,7 @@ public class AIMovement : MonoBehaviour
         bool canMove;
         for (int i = 0; i < listOfPossibleMoves.Count; i++)
         {
-            canMove = (-6 - listOfPossibleMoves[i].y) >= (-6 - AIActualPosition.y);
+            canMove = (-6 - listOfPossibleMoves[i].y) > (-6 - AIActualPosition.y);
             if (canMove)
             {
                 tempListOfMoves.Add(listOfPossibleMoves[i]);
@@ -260,15 +272,113 @@ public class AIMovement : MonoBehaviour
 
         listOfPossibleMoves.Clear();
         listOfPossibleMoves = tempListOfMoves;
-
+        /*
         Debug.Log("Etap 4: " + listOfPossibleMoves.Count);
+        for (int i = 0; i < listOfPossibleMoves.Count; i++)
+        {
+            Debug.Log(i + " - " + listOfPossibleMoves[i]);
+        }
+        */
     }
 
     private Vector3 SelectedPosition()
     {
         AISelectedPosition = listOfPossibleMoves[Random.Range(0, listOfPossibleMoves.Count)];
-        return AISelectedPosition;
+        int wrongPosition = NextPossibleMovesPrediction(AISelectedPosition);
+        if(wrongPosition == 0)
+        {
+            foreach (Vector3 itemPos in listOfPossibleMoves)
+            {
+                if (itemPos == AISelectedPosition)
+                    listOfPossibleMoves.Remove(itemPos);
+            }
+            AISelectedPosition = listOfPossibleMoves[Random.Range(0, listOfPossibleMoves.Count)];
+            return AISelectedPosition;
+        }
+        else
+            return AISelectedPosition;
     }
+
+    private int NextPossibleMovesPrediction(Vector3 chosenPosition)
+    {
+        List<Vector3> nextPredictionMoves = new List<Vector3>();
+        nextPredictionMoves = NextPossibleMoves(chosenPosition);
+        List<Vector3> nextPredictionClearMoves = new List<Vector3>();
+        nextPredictionClearMoves = RemoveNextForbiddenPositions(nextPredictionMoves);
+        List<Vector3> brakMiPomyslow = new List<Vector3>();
+        brakMiPomyslow = RemoveNextPositionsFartherFromGoal(nextPredictionClearMoves);
+
+        for (int i = 0; i < brakMiPomyslow.Count; i++)
+        {
+            Debug.Log(i + " - " + brakMiPomyslow[i]);
+        }
+
+        return brakMiPomyslow.Count;
+    }
+
+    // Sprawdzam ponownie opcje dla wylosowanych współrzednych
+    private List<Vector3> NextPossibleMoves(Vector3 actualPosition)
+    {
+        Vector3 forbiddenPosition = Ball.ballPositions[Ball.ballPositions.Count - 1];
+        List<Vector3> tempPossibleMovesList = new List<Vector3>();
+        // liczenie możliwych ruchów zaczyna się od godziny 3 i idzie w przeciwnym kierunku do ruchu wskazówek zegara
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x + 1, actualPosition.y, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x + 1, actualPosition.y + 1, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x, actualPosition.y + 1, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x - 1, actualPosition.y + 1, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x - 1, actualPosition.y, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x - 1, actualPosition.y - 1, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x, actualPosition.y - 1, 0));
+        tempPossibleMovesList.Add(new Vector3(actualPosition.x + 1, actualPosition.y - 1, 0));
+
+        listOfPossibleMoves.Clear();
+
+        for (int i = 0; i < tempPossibleMovesList.Count; i++)
+        {
+            if (tempPossibleMovesList[i] != forbiddenPosition)
+            {
+                listOfPossibleMoves.Add(tempPossibleMovesList[i]);
+            }
+        }
+
+        return tempPossibleMovesList;
+    }
+
+    private List<Vector3> RemoveNextForbiddenPositions(List<Vector3> nextPredictionPositions)
+    {
+        List<Vector3> nextAvailableMoves = new List<Vector3>();
+        nextAvailableMoves = nextPredictionPositions;
+        foreach (List<Vector3> positionIn in MovementController.positionsInOut.ToArray())
+        {
+            if (positionIn[0] == AISelectedPosition)
+            {
+                foreach (Vector3 position in nextPredictionPositions.ToArray())
+                {
+                    if (position == positionIn[1])
+                        nextAvailableMoves.Remove(position);
+                }
+            }
+        }
+
+        return nextAvailableMoves;
+    }
+
+    private List<Vector3> RemoveNextPositionsFartherFromGoal(List<Vector3> movesForCheck)
+    {
+        List<Vector3> tempListOfMoves = new List<Vector3>();
+        bool canMove;
+        for (int i = 0; i < movesForCheck.Count; i++)
+        {
+            canMove = (-6 - movesForCheck[i].y) > (-6 - AISelectedPosition.y);
+            if (canMove)
+            {
+                tempListOfMoves.Add(movesForCheck[i]);
+            }
+        }
+
+        return tempListOfMoves;
+    }
+    // koniec
 
     private void AdditionalMoveOnEdge()
     {
@@ -282,7 +392,7 @@ public class AIMovement : MonoBehaviour
         }
     }
 
-    private void AdditionalMoveInField(Vector3 position)
+    private void AdditionalMoveInField()
     {
         for (int j = 0; j < Ball.ballPositions.Count; j++)
         {
@@ -297,7 +407,7 @@ public class AIMovement : MonoBehaviour
     private void ApprovePosition()
     {
         MovementController.playerChanger = 0;
-        AdditionalMoveInField(blueLineRenderer.GetPosition(blueLineRenderer.positionCount - 1));
+        AdditionalMoveInField();
         numberOfMoves--;
         ball.position = blueLineRenderer.GetPosition(blueLineRenderer.positionCount - 1);
         Ball.ballPositions.Add(ball.position);
